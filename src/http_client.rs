@@ -1,13 +1,9 @@
-use reqwest::header::{HeaderMap, USER_AGENT};
+use reqwest::{Client, header::HeaderMap};
 use std::error::Error;
 
-/// Fetches headers from the target URL.
-pub async fn fetch_headers(url: &str) -> Result<HeaderMap, Box<dyn Error>> {
-    let client = reqwest::Client::new();
-    let response = client.get(url)
-        .header(USER_AGENT, "CacheSniper/1.0")
-        .send()
-        .await?;
-    
+/// Fetches headers from the given URL
+pub async fn fetch_headers(url: &str) -> Result<HeaderMap, Box<dyn Error + Send + Sync>> {
+    let client = Client::new();
+    let response = client.get(url).send().await?;
     Ok(response.headers().clone())
 }

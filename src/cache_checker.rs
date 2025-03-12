@@ -14,7 +14,7 @@ pub struct CacheResult {
     cdn_provider: String,
 }
 
-/// Custom error wrapper to ensure Send + Sync compatibility
+/// Custom error wrapper for consistent error handling
 #[derive(Debug)]
 struct CacheSniperError(String);
 
@@ -68,7 +68,8 @@ pub async fn check_cache(url: &str, verbose: bool) -> Result<CacheResult, Box<dy
         .map_err(|e| Box::new(CacheSniperError(e.to_string())) as Box<dyn Error + Send + Sync>)?;
 
     if verbose {
-        println!("\n📜 Full Headers for {}:", url);
+        println!("
+📜 Full Headers for {}:", url);
         for (key, value) in headers.iter() {
             println!("{}: {}", key, value.to_str().unwrap_or("INVALID UTF-8"));
         }

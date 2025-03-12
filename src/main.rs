@@ -1,11 +1,11 @@
 mod cache_checker;
+mod validate_cache;
 mod http_client;
 mod utils;
-mod metrics;
 
 use clap::Parser;
 use cache_checker::check_cache;
-use metrics::start_metrics_server;
+use validate_cache::validate_cache;
 use tokio::sync::mpsc;
 use std::error::Error;
 use std::fs;
@@ -22,37 +22,31 @@ struct Args {
     #[arg(short, long)]
     json: bool,
 
-    /// Enable Prometheus metrics server
+    /// Enable cache validation (checks if revalidation works correctly)
     #[arg(long)]
-    metrics: bool,
+    validate: bool,
 
     /// Save output to a JSON file
     #[arg(short, long)]
     output: Option<String>,
-
-    /// Show full HTTP headers
-    #[arg(short, long)]
-    verbose: bool,
 }
 
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
 
-    if args.metrics {
-        tokio::spawn(async {
-            start_metrics_server().await.unwrap();
-        });
-    }
-
     let (tx, mut rx) = mpsc::channel(args.urls.len());
 
     for url in &args.urls {
         let url = url.clone();
         let tx = tx.clone();
-        let verbose = args.verbose;
+        let validate = args.validate;
         tokio::spawn(async move {
-            let result: Result<_, Box<dyn Error + Send + Sync>> = check_cache(&url, verbose).await.map_err(|e| e.into());
+            let result: Result<serde_json::Value, Box<dyn Error + Send + Sync>> = if validate {
+                validate_cache(&url).await.map(|r| serde_json::to_value(r).unwrap()).map_err(|e| e.into())
+            } else {
+                check_cache(&url, false).await.map(|r| serde_json::to_value(r).unwrap()).map_err(|e| e.into())
+            };
             tx.send((url, result)).await.unwrap();
         });
     }
