@@ -26,28 +26,59 @@ impl fmt::Display for CacheSniperError {
 
 impl Error for CacheSniperError {}
 
-/// Analyzes caching headers for a given URL, now supporting verbose mode and CDN provider detection
+/// Detects known CDNs based on the "Server" header
+/// Detects known CDNs based on various headers dynamically
+fn detect_cdn(headers: &reqwest::header::HeaderMap) -> String {
+    let known_cdns = vec![
+        "cloudflare", "fastly", "akamai", "cloudfront", "gcore", "bunnycdn",
+        "cdn77", "stackpath", "edgecast", "limelight", "quic.cloud", "github",
+        "imperva", "sucuri", "cachefly", "jsdelivr", "bootstrapcdn", "keycdn",
+        "maxcdn", "belugacdn", "arvancloud", "google", "stackpathdns"
+    ];
+
+    let server_header = headers.get("server")
+        .map(|v| v.to_str().unwrap_or(""))
+        .unwrap_or("")
+        .to_lowercase();
+
+    let via_header = headers.get("via")
+        .map(|v| v.to_str().unwrap_or(""))
+        .unwrap_or("")
+        .to_lowercase();
+
+    let cdn_provider_header = headers.get("x-cdn-provider")
+        .map(|v| v.to_str().unwrap_or(""))
+        .unwrap_or("")
+        .to_lowercase();
+
+    // Check if any of the headers contain a known CDN keyword
+    for cdn in &known_cdns {
+        if server_header.contains(cdn) || via_header.contains(cdn) || cdn_provider_header.contains(cdn) {
+            return cdn.to_string();
+        }
+    }
+
+    // If no CDN is detected, return "Unknown" instead of "None"
+    "Unknown".to_string()
+}
+
 pub async fn check_cache(url: &str, verbose: bool) -> Result<CacheResult, Box<dyn Error + Send + Sync>> {
     let headers = fetch_headers(url)
         .await
         .map_err(|e| Box::new(CacheSniperError(e.to_string())) as Box<dyn Error + Send + Sync>)?;
 
     if verbose {
-        println!("
-📜 Full Headers for {}:", url);
+        println!("\n📜 Full Headers for {}:", url);
         for (key, value) in headers.iter() {
             println!("{}: {}", key, value.to_str().unwrap_or("INVALID UTF-8"));
         }
     }
 
-    // Detect CDN provider from the "Server" header
-    let cdn_provider = headers.get("server")
-        .map(|v| v.to_str().unwrap_or("Unknown CDN"))
-        .unwrap_or("Unknown CDN")
-        .to_string();
+    let cdn_provider = detect_cdn(&headers);
 
-    println!("
-🌐 CDN Provider: {}", cdn_provider);
+    if cdn_provider != "None" {
+        println!("\n🌐 CDN Provider: {}", cdn_provider);
+    }
 
     let cache_control = headers.get("cache-control").map(|v| v.to_str().unwrap_or("")).unwrap_or("None").to_string();
     let etag = headers.get("etag").map(|v| v.to_str().unwrap_or("")).unwrap_or("None").to_string();
