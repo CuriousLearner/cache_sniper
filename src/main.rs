@@ -50,8 +50,9 @@ async fn main() {
     for url in &args.urls {
         let url = url.clone();
         let tx = tx.clone();
+        let verbose = args.verbose;
         tokio::spawn(async move {
-            let result: Result<_, Box<dyn Error + Send + Sync>> = check_cache(&url).await.map_err(|e| e.into());
+            let result: Result<_, Box<dyn Error + Send + Sync>> = check_cache(&url, verbose).await.map_err(|e| e.into());
             tx.send((url, result)).await.unwrap();
         });
     }
