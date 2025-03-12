@@ -8,13 +8,14 @@ use cache_checker::check_cache;
 use metrics::start_metrics_server;
 use tokio::sync::mpsc;
 use std::error::Error;
+use std::fs;
 
 /// CLI arguments
 #[derive(Parser)]
 #[command(author, version, about)]
 struct Args {
-    /// Target URLs to check
-    #[arg(short, long, num_args = 1..)]
+    /// Target URLs to check (accepts single or multiple URLs)
+    #[arg(short = 'u', long = "url", alias = "urls", num_args = 1..)]
     urls: Vec<String>,
 
     /// Enable JSON output
@@ -24,13 +25,20 @@ struct Args {
     /// Enable Prometheus metrics server
     #[arg(long)]
     metrics: bool,
+
+    /// Save output to a JSON file
+    #[arg(short, long)]
+    output: Option<String>,
+
+    /// Show full HTTP headers
+    #[arg(short, long)]
+    verbose: bool,
 }
 
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
 
-    // Start Prometheus metrics server if enabled
     if args.metrics {
         tokio::spawn(async {
             start_metrics_server().await.unwrap();
@@ -39,7 +47,6 @@ async fn main() {
 
     let (tx, mut rx) = mpsc::channel(args.urls.len());
 
-    // Spawn multiple tasks for parallel scanning
     for url in &args.urls {
         let url = url.clone();
         let tx = tx.clone();
@@ -59,6 +66,13 @@ async fn main() {
             },
             Err(e) => eprintln!("Error scanning {}: {}", url, e),
         }
+    }
+
+    if let Some(output_file) = &args.output {
+        let json_output = serde_json::to_string_pretty(&results).unwrap();
+        fs::write(output_file, json_output).expect("Failed to write output file");
+        println!("
+📁 Results saved to {}", output_file);
     }
 
     if args.json {

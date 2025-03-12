@@ -9,7 +9,10 @@ to determine whether a webpage is being cached properly and how cache invalidati
 ## 📌 **Features**
 ✅ **Parallel Scanning** - Analyze multiple URLs at the same time
 ✅ **JSON Output** - Export cache test results in JSON format
+✅ **Save Results to File** - Use `--output` to store findings
+✅ **CDN Detection** - Automatically identifies CDN provider
 ✅ **Prometheus Metrics** - Monitor CDN caching behavior over time
+✅ **Verbose Mode** - Show full HTTP headers for deep debugging
 ✅ **Tabular & Colorized Output** - Easy-to-read terminal display
 
 ---
@@ -26,29 +29,44 @@ cd cache_sniper
 cargo build --release
 ```
 
+To install globally:
+```sh
+cargo install --path .
+```
+
 ---
 
 ## 🔥 **Usage**
 ### **Basic Check**
 Scan a single URL:
 ```sh
-cargo run -- --urls "https://example.com"
+cache_sniper --url "https://example.com"
 ```
 
 ### **Scan Multiple URLs**
 ```sh
-cargo run -- --urls "https://example1.com" "https://example2.com"
+cache_sniper --urls "https://example1.com" "https://example2.com"
 ```
 
 ### **Enable JSON Output**
 ```sh
-cargo run -- --urls "https://example.com" --json
+cache_sniper --url "https://example.com" --json
+```
+
+### **Save Results to a File**
+```sh
+cache_sniper --url "https://example.com" --json --output results.json
 ```
 
 ### **Start Prometheus Metrics Server**
 Run a metrics server at `http://localhost:9090/metrics`:
 ```sh
-cargo run -- --metrics
+cache_sniper --metrics
+```
+
+### **Enable Verbose Mode (See Full Headers)**
+```sh
+cache_sniper --url "https://example.com" --verbose
 ```
 
 ---
@@ -56,15 +74,19 @@ cargo run -- --metrics
 ## 📊 **Example Output**
 ```
 🌍 Scanning: https://example.com
+🌐 CDN Provider: Cloudflare
 
-┌───────────────┬───────────────────────────┐
-│ 🔍 Header     │ 📜 Value                   │
-├───────────────┼───────────────────────────┤
-│ 🛠 Cache-Control │ max-age=3600               │
-│ 🔄 ETag       │ "abc123"                   │
-│ 📆 Last-Modified │ Mon, 10 Mar 2025 12:00:00 GMT │
-│ ⏳ Expires    │ Tue, 11 Mar 2025 12:00:00 GMT │
-└───────────────┴───────────────────────────┘
+┌──────────────────┬───────────────────────────────┐
+│ 🔍 Header        ┆ 📜 Value                      │
+╞══════════════════╪═══════════════════════════════╡
+│ 🛠 Cache-Control  ┆ max-age=86400                 │
+├──────────────────┼───────────────────────────────┤
+│ 🔄 ETag          ┆ "abc123"                      │
+├──────────────────┼───────────────────────────────┤
+│ 📆 Last-Modified ┆ Tue, 11 Mar 2025 06:28:07 GMT │
+├──────────────────┼───────────────────────────────┤
+│ ⏳ Expires       ┆ None                          │
+└──────────────────┴───────────────────────────────┘
 
 ✅ Success: This page is being cached!
 ```
@@ -73,18 +95,12 @@ cargo run -- --metrics
 
 ## 🎯 **Why is this project helpful?**
 **CacheSniper** helps:
-- **Developers** verify cache settings to improve performance
-- **DevOps engineers** ensure proper CDN caching across services
-- **Security teams** detect cache poisoning vulnerabilities
-- **API teams** confirm responses respect caching policies
+- **DevOps engineers** debug caching behavior and identify stale content issues.
+- **SREs** ensure cache invalidation works in **CI/CD pipelines**.
+- **Security teams** detect **cache poisoning vulnerabilities**.
+- **Monitoring teams** track **real-time cache behavior** via Prometheus.
 
 ---
-### **🚀 Future Enhancements**
-- 🔄 Add **cache-busting tests** (send different ETags to check invalidation)
-- 📈 Integrate **Grafana dashboards** with Prometheus metrics
-- 🌍 Support **batch URL scanning from a file**
-- 🔎 Detect **cache inconsistencies** across regions
 
----
 ## 📜 **License**
 MIT License. Use freely and contribute!
