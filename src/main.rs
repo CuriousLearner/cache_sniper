@@ -2,10 +2,12 @@ mod cache_checker;
 mod validate_cache;
 mod http_client;
 mod utils;
+mod metrics;
 
 use clap::Parser;
 use cache_checker::check_cache;
 use validate_cache::validate_cache;
+use metrics::{increment_requests, increment_errors};
 use tokio::sync::mpsc;
 use std::error::Error;
 use std::fs;
@@ -26,6 +28,10 @@ struct Args {
     #[arg(long)]
     validate: bool,
 
+    /// Start Prometheus metrics server
+    #[arg(long)]
+    metrics: bool,
+
     /// Save output to a JSON file
     #[arg(short, long)]
     output: Option<String>,
@@ -35,7 +41,14 @@ struct Args {
 async fn main() {
     let args = Args::parse();
 
-    let (tx, mut rx) = mpsc::channel(args.urls.len());
+    // Handle metrics separately
+    if args.metrics {
+        println!("📡 Starting Prometheus Metrics Server at http://localhost:9090/metrics");
+        metrics::start_metrics_server().await.unwrap();
+        return;
+    }
+
+    let (tx, mut rx) = mpsc::channel(args.urls.len().max(1)); // Ensure buffer size is at least 1
 
     for url in &args.urls {
         let url = url.clone();
@@ -43,10 +56,18 @@ async fn main() {
         let validate = args.validate;
         tokio::spawn(async move {
             let result: Result<serde_json::Value, Box<dyn Error + Send + Sync>> = if validate {
-                validate_cache(&url).await.map(|r| serde_json::to_value(r).unwrap()).map_err(|e| e.into())
+                validate_cache(&url).await.map(|r| serde_json::to_value(r).unwrap()).map_err(|e| {
+                    increment_errors(); // Track errors
+                    e.into()
+                })
             } else {
-                check_cache(&url, false).await.map(|r| serde_json::to_value(r).unwrap()).map_err(|e| e.into())
+                check_cache(&url, false).await.map(|r| serde_json::to_value(r).unwrap()).map_err(|e| {
+                    increment_errors(); // Track errors
+                    e.into()
+                })
             };
+
+            increment_requests(); // Track successful request
             tx.send((url, result)).await.unwrap();
         });
     }
