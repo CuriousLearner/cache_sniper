@@ -8,13 +8,14 @@ to determine whether a webpage is being cached properly and how cache invalidati
 
 ## 📌 **Features**
 
-✅ **Parallel Scanning** - Analyze multiple URLs at the same time
-✅ **JSON Output** - Export cache test results in JSON format
-✅ **Save Results to File** - Use `--output` to store findings
-✅ **CDN Detection** - Automatically identifies CDN provider
-✅ **Prometheus Metrics** - Monitor CDN caching behavior over time
-✅ **Verbose Mode** - Show full HTTP headers for deep debugging
-✅ **Tabular & Colorized Output** - Easy-to-read terminal display
+* **Parallel Scanning** - Analyze multiple URLs at the same time
+* **Cache Validation (`--validate`)** - Ensures cache consistency
+* **JSON Output** - Export cache test results in JSON format
+* **Save Results to File** - Use `--output` to store findings
+* **CDN Detection** - Automatically identifies CDN provider
+* **Prometheus Metrics** - Monitor CDN caching behavior over time
+* **Verbose Mode** - Show full HTTP headers for deep debugging
+* **Tabular & Colorized Output** - Easy-to-read terminal display
 
 ---
 
@@ -28,15 +29,15 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 Then, clone and build:
 
-```sh
-git clone https://github.com/your-repo/cache_sniper.git
+```bash
+git clone https://github.com/CuriousLearner/cache_sniper.git
 cd cache_sniper
 cargo build --release
 ```
 
 To install globally:
 
-```sh
+```bash
 cargo install --path .
 ```
 
@@ -48,25 +49,25 @@ cargo install --path .
 
 Scan a single URL:
 
-```sh
+```bash
 cache_sniper --url "https://example.com"
 ```
 
 ### **Scan Multiple URLs**
 
-```sh
+```bash
 cache_sniper --urls "https://example1.com" "https://example2.com"
 ```
 
 ### **Enable JSON Output**
 
-```sh
+```bash
 cache_sniper --url "https://example.com" --json
 ```
 
 ### **Save Results to a File**
 
-```sh
+```bash
 cache_sniper --url "https://example.com" --json --output results.json
 ```
 
@@ -74,21 +75,35 @@ cache_sniper --url "https://example.com" --json --output results.json
 
 Run a metrics server at `http://localhost:9090/metrics`:
 
-```sh
+```bash
 cache_sniper --metrics
 ```
 
 ### **Enable Verbose Mode (See Full Headers)**
 
-```sh
+```bash
 cache_sniper --url "https://example.com" --verbose
 ```
+
+### **Validate Cache Behavior (`--validate`)**
+
+Check if caching is **working correctly** by sending a normal request and a `Cache-Control: no-cache` request, then comparing responses:
+
+```bash
+cache_sniper --url "https://example.com" --validate
+```
+
+**How it works:**
+
+- If `ETag`, `Last-Modified`, and response **do not change**, cache is working correctly. ✅
+- If **values change**, the cache **might not be working consistently**. ⚠️
+- If **no cache headers exist**, validation is skipped automatically. 🚨
 
 ---
 
 ## 📊 **Example Output**
 
-```
+```bash
 🌍 Scanning: https://example.com
 🌐 CDN Provider: Cloudflare
 
@@ -105,6 +120,25 @@ cache_sniper --url "https://example.com" --verbose
 └──────────────────┴───────────────────────────────┘
 
 ✅ Success: This page is being cached!
+```
+
+### **Example Output for `--validate`**
+
+```bash
+🌍 Validating Cache for: https://example.com
+🔄 ETag Before: "abc123"
+🔄 ETag After : "abc123"
+📆 Last-Modified Before: Tue, 11 Mar 2025 06:28:07 GMT
+📆 Last-Modified After : Tue, 11 Mar 2025 06:28:07 GMT
+⏳ Age Header: 86400
+
+✅ Success: Cache is working correctly!
+```
+
+If no cache headers are detected:
+
+```bash
+🚨 Warning: No caching detected on http://localhost:9001, skipping validation!
 ```
 
 ---
