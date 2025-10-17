@@ -7,7 +7,6 @@ mod metrics;
 use clap::Parser;
 use cache_checker::check_cache;
 use validate_cache::validate_cache;
-use metrics::{increment_requests, increment_errors};
 use tokio::sync::mpsc;
 use std::error::Error;
 use std::fs;
@@ -56,18 +55,11 @@ async fn main() {
         let validate = args.validate;
         tokio::spawn(async move {
             let result: Result<serde_json::Value, Box<dyn Error + Send + Sync>> = if validate {
-                validate_cache(&url).await.map(|r| serde_json::to_value(r).unwrap()).map_err(|e| {
-                    increment_errors(); // Track errors
-                    e.into()
-                })
+                validate_cache(&url).await.map(|r| serde_json::to_value(r).unwrap()).map_err(|e| e.into())
             } else {
-                check_cache(&url, false).await.map(|r| serde_json::to_value(r).unwrap()).map_err(|e| {
-                    increment_errors(); // Track errors
-                    e.into()
-                })
+                check_cache(&url, false).await.map(|r| serde_json::to_value(r).unwrap()).map_err(|e| e.into())
             };
 
-            increment_requests(); // Track successful request
             tx.send((url, result)).await.unwrap();
         });
     }

@@ -13,8 +13,7 @@ to determine whether a webpage is being cached properly and how cache invalidati
 * **JSON Output** - Export cache test results in JSON format
 * **Save Results to File** - Use `--output` to store findings
 * **CDN Detection** - Automatically identifies CDN provider
-* **Prometheus Metrics** - Monitor CDN caching behavior over time
-* **Verbose Mode** - Show full HTTP headers for deep debugging
+* **Prometheus Metrics** - Monitor CDN caching behavior over time (requires Redis)
 * **Tabular & Colorized Output** - Easy-to-read terminal display
 
 ---
@@ -40,6 +39,8 @@ To install globally:
 ```bash
 cargo install --path .
 ```
+
+**Optional:** Redis is only required if you want to use the `--metrics` flag for Prometheus monitoring. For basic cache checking, Redis is not needed.
 
 ---
 
@@ -79,10 +80,18 @@ Run a metrics server at `http://localhost:9090/metrics`:
 cache_sniper --metrics
 ```
 
-### **Enable Verbose Mode (See Full Headers)**
+**Note:** Metrics mode requires Redis to be running on `localhost:6379`. Install and start Redis:
 
 ```bash
-cache_sniper --url "https://example.com" --verbose
+# macOS
+brew install redis
+brew services start redis
+
+# Ubuntu/Debian
+sudo apt-get install redis-server
+sudo systemctl start redis
+
+# Other systems - see https://redis.io/download
 ```
 
 ### **Validate Cache Behavior (`--validate`)**
