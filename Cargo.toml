@@ -3,6 +3,14 @@ name = "cache_sniper"
 version = "0.2.1"
 edition = "2021"
 
+[lib]
+name = "cache_sniper"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cache_sniper"
+path = "src/main.rs"
+
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
