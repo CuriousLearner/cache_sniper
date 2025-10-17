@@ -10,10 +10,14 @@ to determine whether a webpage is being cached properly and how cache invalidati
 
 * **Parallel Scanning** - Analyze multiple URLs at the same time
 * **Cache Validation (`--validate`)** - Ensures cache consistency
-* **JSON Output** - Export cache test results in JSON format
+* **CDN-Specific Analysis** - Parse Cloudflare (CF-Cache-Status), Fastly (X-Cache), and generic CDN headers
+* **Smart Cache Verdicts** - Interprets cache status (HIT/MISS/DYNAMIC/BYPASS) with explanations
+* **CI/CD Integration** - `--exit-code` flag returns exit code 1 when caching fails (perfect for pipelines)
+* **JSON Output** - Export cache test results in JSON format with all CDN headers
 * **Save Results to File** - Use `--output` to store findings
-* **CDN Detection** - Automatically identifies CDN provider
+* **CDN Detection** - Automatically identifies 23+ CDN providers
 * **Prometheus Metrics** - Monitor CDN caching behavior over time (requires Redis)
+* **Comprehensive Tests** - 8+ unit tests covering CDN detection and cache validation
 * **Tabular & Colorized Output** - Easy-to-read terminal display
 
 ---
@@ -108,6 +112,56 @@ cache_sniper --url "https://example.com" --validate
 - If **values change**, the cache **might not be working consistently**. ⚠️
 - If **no cache headers exist**, validation is skipped automatically. 🚨
 
+### **CI/CD Integration (`--exit-code`)**
+
+Use in CI pipelines to fail builds when caching is not properly configured:
+
+```bash
+# Fails with exit code 1 if caching is disabled or broken
+cache_sniper --url "https://example.com" --exit-code
+
+# Perfect for GitHub Actions, GitLab CI, CircleCI, etc.
+cache_sniper --url "https://api.example.com" --validate --exit-code --json
+```
+
+**Use cases:**
+- Verify CDN configuration after deployment
+- Ensure static assets are cacheable before merging PRs
+- Monitor cache behavior in staging environments
+
+---
+
+## 🔍 **CDN-Specific Features**
+
+CacheSniper understands CDN-specific headers and provides intelligent verdicts:
+
+### **Cloudflare**
+- **CF-Cache-Status**: HIT, MISS, EXPIRED, DYNAMIC, BYPASS, REVALIDATED
+- **CF-Ray**: Request ID for debugging
+- **Example verdict**: `"HIT - Served from Cloudflare cache"`
+
+### **Fastly / Akamai / Generic CDNs**
+- **X-Cache**: HIT, MISS
+- **X-Served-By**: Cache server identifier
+- **X-Cache-Hits**: Number of cache hits
+- **Age**: Cache age in seconds
+
+### **Example JSON Output**
+
+```json
+{
+  "url": "https://www.rust-lang.org",
+  "is_cached": true,
+  "cache_verdict": "HIT - Served from github cache",
+  "cdn_provider": "github",
+  "x_cache": "HIT",
+  "x_cache_hits": "1",
+  "age": "16",
+  "cache_control": "max-age=600",
+  "etag": "\"68f16b7d-4899\""
+}
+```
+
 ---
 
 ## 📊 **Example Output**
@@ -129,6 +183,10 @@ cache_sniper --url "https://example.com" --validate
 └──────────────────┴───────────────────────────────┘
 
 ✅ Success: This page is being cached!
+🔍 CF-Cache-Status: HIT
+⏱️  Age: 120 seconds
+
+📊 Verdict: HIT - Served from Cloudflare cache
 ```
 
 ### **Example Output for `--validate`**

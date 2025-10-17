@@ -34,6 +34,10 @@ struct Args {
     /// Save output to a JSON file
     #[arg(short, long)]
     output: Option<String>,
+
+    /// Exit with code 1 if any URL has no caching enabled
+    #[arg(long)]
+    exit_code: bool,
 }
 
 #[tokio::main]
@@ -67,12 +71,31 @@ async fn main() {
     drop(tx);
 
     let mut results = vec![];
+    let mut has_errors = false;
+    let mut has_no_cache = false;
+
     while let Some((url, result)) = rx.recv().await {
         match result {
             Ok(json_result) => {
+                // Check if this result indicates no caching
+                if let Some(obj) = json_result.as_object() {
+                    if let Some(is_cached) = obj.get("is_cached") {
+                        if is_cached == &serde_json::Value::Bool(false) {
+                            has_no_cache = true;
+                        }
+                    }
+                    if let Some(is_consistent) = obj.get("is_consistent") {
+                        if is_consistent == &serde_json::Value::Bool(false) {
+                            has_no_cache = true;
+                        }
+                    }
+                }
                 results.push(json_result);
             },
-            Err(e) => eprintln!("Error scanning {}: {}", url, e),
+            Err(e) => {
+                eprintln!("Error scanning {}: {}", url, e);
+                has_errors = true;
+            }
         }
     }
 
@@ -85,5 +108,10 @@ async fn main() {
 
     if args.json {
         println!("{}", serde_json::to_string_pretty(&results).unwrap());
+    }
+
+    // Exit with error code if requested and caching issues detected
+    if args.exit_code && (has_errors || has_no_cache) {
+        std::process::exit(1);
     }
 }
